@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import '../Auction.scss';
+import { formatNumber } from '../../../services/utils'
 
 export function renderTooltip({ active, payload }) {
   if (!active) {
@@ -9,7 +10,7 @@ export function renderTooltip({ active, payload }) {
 
   return (
     <div className="tooltip__container">
-      <p>{payload && payload[0] && `${payload[0].value}`}</p>
+      <p>{payload && payload[0] && `${formatNumber(payload[0].value)}`}</p>
       {/* <span className="tooltip__triangle" /> */}
     </div>
   );
@@ -25,10 +26,10 @@ export default class Diagram extends Component {
       <div className="diagram__container">
         <p className="diagram__label">{this.props.tabContent.name}</p>
         <LineChart
-          width={870}
+          width={920}
           height={300}
           data={this.props.data}
-          margin={{ top: 20, right: 50, bottom: 30 }}
+          margin={{ top: 20, right: 50, bottom: 30, left: 15 }}
         >
           <CartesianGrid vertical={false} stroke="#000000" />
           <XAxis
@@ -37,8 +38,10 @@ export default class Diagram extends Component {
             axisLine={false}
             tickMargin={10}
             tickLine={false}
+            dataKey="name"
           />
-          <YAxis tick={{ stroke: '#ffffff' }} stroke="#000000" axisLine={false} tickMargin={10} />
+          <YAxis tickFormatter={formatNumber}
+            tick={{ stroke: '#ffffff' }} stroke="#000000" axisLine={false} tickMargin={10} />
           <Tooltip content={renderTooltip} wrapperStyle={{ top: -60, left: -50 }} />
           <Line
             type="monotone"

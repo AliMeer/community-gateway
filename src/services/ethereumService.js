@@ -50,6 +50,24 @@ const getAccount = async () => {
   return accounts[0];
 };
 
+const getNecEth = async () => {
+  const tickerRes = await fetch('https://api.deversifi.com/bfx/v2/candles/trade:1D:tNECETH/hist');
+  const ticker = await tickerRes.json();
+  return ticker;
+}
+
+const getNecUsdByTimestamp = async timeStamp => {
+  const tickerRes = await fetch(`https://api.deversifi.com/bfx/v2/candles/trade:1h:tNECUSD/last?limit=1&start=${timeStamp}`)
+  const ticker = await tickerRes.json();
+  return ticker[2];
+}
+
+const getNecUsd = async () => {
+  const tickerRes = await fetch('https://api.deversifi.com/bfx/v2/candles/trade:1D:tNECUSD/hist?limit=7');
+  const ticker = await tickerRes.json();
+  return ticker;
+}
+
 const getBalance = async _account => {
   const account = _account || (await getAccount());
   const balanceWei = await window._web3.eth.getBalance(account);
@@ -80,6 +98,9 @@ const getChartBlockRange = async days => {
   const fromBlock = Math.floor(toBlock - blocksInDays);
   return { fromBlock, toBlock };
 };
+
+
+const getBlockByNumber = block => window._web3.eth.getBlock(block);
 
 const getNetwork = () => window._web3.eth.net.getId();
 
@@ -356,6 +377,32 @@ const voteTokens = async (tokenId, amount, accountType) => {
   });
 };
 
+const sellAndBurn = async (amount, accountType) => {
+  const account = await getAccount()
+
+  const engineContract = getEngineContract()
+  const nectarContract = getTokenContract()
+  const allowance = await nectarContract.methods.allowance(account, engineContract._address).call()
+  if (+allowance < +ethToWei(amount)) {
+    const approveCall = nectarContract.methods.approve(
+      engineContract._address,
+      '10000000000000000000000000000000')
+    if (accountType === 'ledger') await signAndSendLedger(approveCall)
+    if (accountType === 'keystore') await signAndSendKeystore(approveCall)
+    if (accountType === 'metamask') await approveCall.send({from: account})
+  }
+
+  const contractCall = engineContract.methods.sellAndBurnNec(
+    ethToWei(amount)
+  )
+  if (accountType === 'ledger') return signAndSendLedger(contractCall)
+  if (accountType === 'keystore') return signAndSendKeystore(contractCall)
+
+  return contractCall.send({
+    from: account,
+  })
+}
+
 const hasUserVoted = async (proposalId, address) => {
   if (!address) return false;
   const proposalContract = getProposalContract();
@@ -619,6 +666,12 @@ const getNecPrice = async () => {
   return ticker[6];
 };
 
+const getNecPriceInEth = async () => {
+  const tickerRes = await fetch('https://api.deversifi.com/bfx/v2/ticker/tNECETH');
+  const ticker = await tickerRes.json();
+  return ticker[6];
+}
+
 const calculateNecReward = async volume => {
   if (!ethPrice) ethPrice = await getEthPrice();
   log(`Eth price ${ethPrice}`);
@@ -689,6 +742,7 @@ export default {
   voteTokens,
   getActiveTokenListingProposal,
   getTokenProposalDetails,
+  sellAndBurn,
   hasUserVoted,
   userBalanceOnProposal,
   calculateNecReward,
@@ -708,4 +762,11 @@ export default {
   getEngineContract,
   getTokenContract,
   getChartBlockRange,
+  getNecPrice,
+  getEthPrice,
+  getNecPriceInEth,
+  getBlockByNumber,
+  getNecEth,
+  getNecUsd,
+  getNecUsdByTimestamp
 };

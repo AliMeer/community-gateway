@@ -3,435 +3,174 @@ import {
   FETCH_BURNED_NEC,
   FETCH_DEVERSIFI_NEC_ETH_DATA,
   FETCH_NEXT_AUCTION_ETH_DATA,
+  FETCH_DEVERSIFI_NEC_USD_DATA,
   FETCH_CURRENT_AUCTION_SUMMARY,
   FETCH_AUCTION_INTERVAL_DATA,
   SELL_IN_AUCTION_START,
   FETCH_AUCTION_TRANSACTIONS,
+  FETCH_ETH_PRICE,
+  FETCH_NEC_PRICE,
+  SELL_AND_BURN_NEC,
+  FETCH_NEXT_AUCTION_DATE
 } from './actionTypes';
 import Web3 from 'web3';
 import config from '../constants/config.json';
 import eth from '../services/ethereumService';
+import { formatEth } from '../services/utils';
+import { notify, notifyError } from './notificationActions';
+import _ from 'lodash';
+import { openLogin } from './accountActions';
+import BN from 'bignumber.js'
+
 
 const web3 = new Web3();
 web3.setProvider(new web3.providers.HttpProvider(config.providerUrl));
 
-export async function getBurnedNEC() {
-  // const account = await eth.getAccount();
+export const fetchNextAuctionDate = () => async dispatch => {
   const engineContract = eth.getEngineContract();
-  const blockRange = await eth.getChartBlockRange();
+
+  const {nextStartTimeSeconds} = await engineContract.methods.getNextAuction().call();
+
+  dispatch({ type: FETCH_NEXT_AUCTION_DATE, nextAuctionDate: nextStartTimeSeconds - Date.now() / 1000 })
+}
+
+export const fetchBurnedNec = () => async dispatch => {
+  const engineContract = eth.getEngineContract();
+  const blockRange = await eth.getChartBlockRange(7);
   const burnedNec = [];
   let pastEvents = await engineContract.getPastEvents('AuctionClose', blockRange);
-  console.log('pastEvents getBurnedNEC ', pastEvents);
-  // Dummy data below, needs to be removed
-  pastEvents = [
-    {
-      address: '0x8AaEEa652EBD90fB8D64A6cac09a0293CE62dD45',
-      blockHash: '0xdb165110dd56c1b1107854de915c239506a7ce3fc88a03c1dcae56379c7c80c7',
-      blockNumber: 15939734,
-      logIndex: 1,
-      removed: false,
-      transactionHash: '0xac0c5460f5f9f9510ede073c2c62f47509f650d99efdac8733abdcb6550d6b93',
-      transactionIndex: 0,
-      transactionLogIndex: '0x1',
-      type: 'mined',
-      id: 'log_9aa9fa3f',
-      returnValues: {
-        '0': '15',
-        '1': '1000000000000000000',
-        '2': '1000000000000000000',
-        auctionCounter: '15',
-        totalEtherConsumed: '1000000000000000000',
-        necBurned: '1000000000000000000',
-      },
-      event: 'AuctionClose',
-      signature: '0xa6cc937511bcbe4aa9f9693416797c7d255412e27bda9ef791a45903f7e97d4e',
-      raw: {
-        data: 'x0000',
-        topics: [Array],
-      },
-    },
-    {
-      address: '0x8AaEEa652EBD90fB8D64A6cac09a0293CE62dD45',
-      blockHash: '0xdb165110dd56c1b1107854de915c239506a7ce3fc88a03c1dcae56379c7c80c7',
-      blockNumber: 15939734,
-      logIndex: 1,
-      removed: false,
-      transactionHash: '0xac0c5460f5f9f9510ede073c2c62f47509f650d99efdac8733abdcb6550d6b93',
-      transactionIndex: 0,
-      transactionLogIndex: '0x1',
-      type: 'mined',
-      id: 'log_9aa9fa3f',
-      returnValues: {
-        '0': '16',
-        '1': '1000000000000000000',
-        '2': '2000000000000000000',
-        auctionCounter: '16',
-        totalEtherConsumed: '1000000000000000000',
-        necBurned: '2000000000000000000',
-      },
-      event: 'AuctionClose',
-      signature: '0xa6cc937511bcbe4aa9f9693416797c7d255412e27bda9ef791a45903f7e97d4e',
-      raw: {
-        data: 'x0000',
-        topics: [Array],
-      },
-    },
-    {
-      address: '0x8AaEEa652EBD90fB8D64A6cac09a0293CE62dD45',
-      blockHash: '0xdb165110dd56c1b1107854de915c239506a7ce3fc88a03c1dcae56379c7c80c7',
-      blockNumber: 15939734,
-      logIndex: 1,
-      removed: false,
-      transactionHash: '0xac0c5460f5f9f9510ede073c2c62f47509f650d99efdac8733abdcb6550d6b93',
-      transactionIndex: 0,
-      transactionLogIndex: '0x1',
-      type: 'mined',
-      id: 'log_9aa9fa3f',
-      returnValues: {
-        '0': '17',
-        '1': '500000000000000000',
-        '2': '2500000000000000000',
-        auctionCounter: '17',
-        totalEtherConsumed: '500000000000000000',
-        necBurned: '2500000000000000000',
-      },
-      event: 'AuctionClose',
-      signature: '0xa6cc937511bcbe4aa9f9693416797c7d255412e27bda9ef791a45903f7e97d4e',
-      raw: {
-        data: 'x0000',
-        topics: [Array],
-      },
-    },
-    {
-      address: '0x8AaEEa652EBD90fB8D64A6cac09a0293CE62dD45',
-      blockHash: '0xdb165110dd56c1b1107854de915c239506a7ce3fc88a03c1dcae56379c7c80c7',
-      blockNumber: 15939734,
-      logIndex: 1,
-      removed: false,
-      transactionHash: '0xac0c5460f5f9f9510ede073c2c62f47509f650d99efdac8733abdcb6550d6b93',
-      transactionIndex: 0,
-      transactionLogIndex: '0x1',
-      type: 'mined',
-      id: 'log_9aa9fa3f',
-      returnValues: {
-        '0': '17',
-        '1': '1000000000000000000',
-        '2': '2000000000000000000',
-        auctionCounter: '17',
-        totalEtherConsumed: '1000000000000000000',
-        necBurned: '2000000000000000000',
-      },
-      event: 'AuctionClose',
-      signature: '0xa6cc937511bcbe4aa9f9693416797c7d255412e27bda9ef791a45903f7e97d4e',
-      raw: {
-        data: 'x0000',
-        topics: [Array],
-      },
-    },
-    {
-      address: '0x8AaEEa652EBD90fB8D64A6cac09a0293CE62dD45',
-      blockHash: '0xdb165110dd56c1b1107854de915c239506a7ce3fc88a03c1dcae56379c7c80c7',
-      blockNumber: 15939734,
-      logIndex: 1,
-      removed: false,
-      transactionHash: '0xac0c5460f5f9f9510ede073c2c62f47509f650d99efdac8733abdcb6550d6b93',
-      transactionIndex: 0,
-      transactionLogIndex: '0x1',
-      type: 'mined',
-      id: 'log_9aa9fa3f',
-      returnValues: {
-        '0': '18',
-        '1': '1000000000000000000',
-        '2': '1000000000000000000',
-        auctionCounter: '168',
-        totalEtherConsumed: '1000000000000000000',
-        necBurned: '1000000000000000000',
-      },
-      event: 'AuctionClose',
-      signature: '0xa6cc937511bcbe4aa9f9693416797c7d255412e27bda9ef791a45903f7e97d4e',
-      raw: {
-        data: 'x0000',
-        topics: [Array],
-      },
-    },
-  ];
-  let burnedSum = 0
-  pastEvents.map((event, index) => {
-    burnedSum = burnedSum + event.returnValues.necBurned / 10 ** 18
+
+  await Promise.all(pastEvents.map(async (event, index) => {
+    const { timestamp } = await eth.getBlockByNumber(event.blockNumber);
+
     burnedNec.push({
-      name: `Point ${index}`,
-      pv: burnedSum,
+      name: new Date(timestamp * 1000).toLocaleDateString(),
+      pv: event.returnValues.necBurned / 1000000000000000000,
       amt: event.event,
     });
+  }));
+
+  dispatch({
+    type: FETCH_BURNED_NEC,
+    burnedNecData: _.uniqBy(_.orderBy(burnedNec, ['name'], ['asc']), 'name')
   });
-  return burnedNec;
-}
+};
 
 export async function getCirculatingNEC() {
   const tokenContract = eth.getTokenContract();
   const blockRange = await eth.getChartBlockRange();
   const blockDiff = Math.floor((blockRange.toBlock - blockRange.fromBlock) / 7);
   const circulatingNec = [];
-  for (let block = blockRange.fromBlock; block <= blockRange.toBlock; block += blockDiff) {
-    tokenContract.methods.totalSupply().call(null, block, (error, totalSupply) => {
-      circulatingNec.push({
-        name: `Point ${block}`,
-        pv: Math.floor(totalSupply / 10 ** 18),
-      });
+
+  for(let block = blockRange.fromBlock; block <= blockRange.toBlock; block += blockDiff) {
+    const supply = await tokenContract.methods.totalSupplyAt(blockRange.fromBlock).call();
+    const { timestamp } = await eth.getBlockByNumber(block);
+
+    circulatingNec.push({
+      name:  new Date(timestamp * 1000).toLocaleDateString(),
+      pv: Math.floor(supply/1000000000000000000)
     });
   }
-  console.log('Circulating NEC Data ', circulatingNec);
-  return circulatingNec;
+
+  const orderedTransactions = circulatingNec.sort((a, b) => new Date(a.name) - new Date(b.name));
+
+  return _.uniqBy(orderedTransactions, 'name');
 }
 
 export async function getDeversifiNecEth() {
-  // const account = await eth.getAccount();
-  const engineContract = eth.getEngineContract();
-  const blockRange = await eth.getChartBlockRange();
-  const deversifiNecEth = [];
-  let pastEvents = await engineContract.getPastEvents('Burn', blockRange);
-  console.log('pastEvents getDeversifiNecEth ', pastEvents);
-  // Dummy data below, needs to be removed
-  pastEvents = [
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '129875000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121875000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121575000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121815000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121895000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '111875000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121375000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-    {
-      returnValues: {
-        '0': '1234556789',
-        '1': '121875000000000000000',
-        '2': '0x14d06788090769F669427B6AEA1c0240d2321f34',
-        amount: '1234556789',
-        price: '121855000000000000000',
-        burner: '0x14d06788090769F669427B6AEA1c0240d2321f34',
-      },
-      event: 'Burn',
-    },
-  ];
-  pastEvents.map((event, index) => {
-    deversifiNecEth.push({
-      name: `Point ${index}`,
-      pv: Math.floor(event.returnValues.price / 10 ** 18),
-    });
-  });
-  return deversifiNecEth;
+  const necEth = await eth.getNecEth();
+
+  const transactions = necEth.slice(0,7).map((transaction, index) => ({
+    name: new Date(transaction[0]).toLocaleDateString(),
+    pv: transaction[2]
+  })).reverse();
+
+  return transactions;
 }
 
-const fetchedBurnedNec = burnedNecData => ({
-  type: FETCH_BURNED_NEC,
-  burnedNecData,
-});
+export const fetchDeversifiNecUsd = () => async dispatch => {
+  const necEth = await eth.getNecUsd();
 
-export const fetchBurnedNec = () => async dispatch => {
-  const burnedNecData = await Promise.all(await getBurnedNEC());
-  dispatch(fetchedBurnedNec(burnedNecData));
-};
+  const transactions = necEth.slice(0,7).map((transaction, index) => ({
+    name: new Date(transaction[0]).toLocaleDateString(),
+    pv: transaction[2]
+  })).reverse();
 
-const fetchedCirculatingNec = circulatingNecData => ({
-  type: FETCH_CIRCULATING_NEC_DATA,
-  circulatingNecData,
-});
+  dispatch({ type: FETCH_DEVERSIFI_NEC_USD_DATA, deversifiNecUsdData: transactions })
+}
 
 export const fetchCirculatingNec = () => async dispatch => {
   const circulatingNecData = await getCirculatingNEC();
-  dispatch(fetchedCirculatingNec(circulatingNecData));
-};
 
-const fetchedDeversifiNecEth = deversifiNecEthData => ({
-  type: FETCH_DEVERSIFI_NEC_ETH_DATA,
-  deversifiNecEthData,
-});
+  dispatch({ type: FETCH_CIRCULATING_NEC_DATA, circulatingNecData });
+};
 
 export const fetchDeversifiNecEth = () => async dispatch => {
   const deversifiNecEthData = await getDeversifiNecEth();
-  dispatch(fetchedDeversifiNecEth(deversifiNecEthData));
+  dispatch({ type: FETCH_DEVERSIFI_NEC_ETH_DATA, deversifiNecEthData });
 };
 
-const fetchedNextAuctionEth = data => ({
-  type: FETCH_NEXT_AUCTION_ETH_DATA,
-  nextAuctionEthData: [
-    {
-      name: 'Page A',
-      pv: 5400,
-      amt: 2400,
-    },
-    {
-      name: 'Page B',
-      pv: 1398,
-      amt: 2210,
-    },
-    {
-      name: 'Page C',
-      pv: 6800,
-      amt: 2290,
-    },
-    {
-      name: 'Page D',
-      pv: 9908,
-      amt: 2000,
-    },
-    {
-      name: 'Page E',
-      pv: 4800,
-      amt: 2181,
-    },
-    {
-      name: 'Page F',
-      pv: 3800,
-      amt: 2500,
-    },
-    {
-      name: 'Page G',
-      pv: 300,
-      amt: 2100,
-    },
-  ],
-});
+const fetchedCurrentActionSummary = data => async dispatch => {
+  const engineContract = eth.getEngineContract();
 
-export const fetchNextAuctionEth = data => async (dispatch, getState) => {
-  dispatch(fetchedNextAuctionEth());
+  try {
+    const current = await engineContract.methods.getCurrentAuction().call();
+    const auctionLength = await engineContract.methods.thawingDelay().call();
+    const blockRange = await eth.getChartBlockRange();
+    const transactions = await engineContract.getPastEvents('Burn', blockRange);
+
+    let purchasedNec = 0
+    let sumEth = 0
+    let necAveragePrice = 'N/A'
+
+    if(transactions.length) {
+      transactions.forEach(transaction => {
+        purchasedNec = purchasedNec + +transaction.returnValues.amount
+        sumEth = sumEth + +transaction.returnValues.amount / +transaction.returnValues.price
+      })
+      purchasedNec = purchasedNec / 1000000000000000000
+      necAveragePrice = (sumEth / purchasedNec).toFixed(5)
+    }
+    const currentNecPrice = (1000000000000000000/current.currentPrice).toFixed(7)
+
+    dispatch({
+      type: FETCH_CURRENT_AUCTION_SUMMARY,
+      nextPriceChange: current.nextPriceChangeSeconds - Date.now() / 1000,
+      startTimeSeconds: Number(current.startTimeSeconds),
+      priceChangeLengthSeconds: auctionLength / 35,
+      currentAuctionSummary: {
+        currentNecPrice: currentNecPrice,
+        nextNecPrice: (1000000000000000000/current.nextPrice).toFixed(7),
+        remainingEth: current.remainingEthAvailable,
+        initialEth: current.initialEthAvailable,
+        necAveragePrice: necAveragePrice,
+        purchasedNec: purchasedNec
+      }
+    });
+  } catch(e) {
+    dispatch({
+      type: FETCH_CURRENT_AUCTION_SUMMARY,
+      currentAuctionSummary: null
+    });
+  }
 };
-
-const fetchedCurrentActionSummary = data => ({
-  type: FETCH_CURRENT_AUCTION_SUMMARY,
-  currentAuctionSummary: [
-    {
-      title: 'Sold',
-      token_price: 8,
-      dollar_price: '1360',
-    },
-    {
-      title: 'Sold',
-      token_price: 24,
-      dollar_price: 0.006,
-    },
-    {
-      title: 'Remaining',
-      token_price: 17.5,
-      dollar_price: 850,
-    },
-    {
-      title: 'Sold NEC Average Price',
-      token_price: 0.00035,
-      dollar_price: 0.055,
-    },
-  ],
-});
 
 export const fetchCurrentActionSummary = data => async dispatch => {
   dispatch(fetchedCurrentActionSummary());
 };
 
-const fetchedAuctionIntervalData = data => ({
-  type: FETCH_AUCTION_INTERVAL_DATA,
-  auctionIntervalData: [
-    {
-      name: 'Page A',
-      uv: 2,
-    },
-    {
-      name: 'Page B',
-      uv: 4,
-    },
-    {
-      name: 'Page C',
-      uv: 6,
-    },
-    {
-      name: 'Page D',
-      uv: 7,
-    },
-    {
-      name: 'Page E',
-      uv: 8,
-    },
-    {
-      name: 'Page F',
-      uv: 9,
-    },
-    {
-      name: 'Page G',
-      uv: 11,
-    },
-  ],
-});
+export const fetchAuctionIntervalData = () => async dispatch => {
+  const engineContract = await eth.getEngineContract();
+  const necPrice = await eth.getNecPrice();
+  const blockRange = await eth.getChartBlockRange();
+  const transactions = await engineContract.getPastEvents('Burn', blockRange);
 
-export const fetchAuctionIntervalData = data => async dispatch => {
-  dispatch(fetchedAuctionIntervalData());
+  const data = transactions.map(transaction => ({
+    nec: transaction.returnValues.amount,
+    eth: formatEth(transaction.returnValues.price)
+  }));
+
+  dispatch({ type: FETCH_AUCTION_INTERVAL_DATA, auctionIntervalData: data });
 };
 
 const sellInAuctionEnd = data => ({
@@ -443,82 +182,75 @@ export const sellInAuctionStart = data => async dispatch => {
   dispatch(sellInAuctionEnd());
 };
 
-const fetchedAuctionTransactions = data => ({
-  type: FETCH_AUCTION_TRANSACTIONS,
-  auctionTransactions: [
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-    {
-      date: '5th Oct 12:05:04',
-      tx: '789890080',
-      wallet_address: '0XFC898B18A70CE49579F8D79A32E29928C15B4BC8',
-      nec: '10,049',
-      eth: '3.12',
-      price_nec_eth: '0.00345',
-      price_nec_usd: '0.055',
-      usd: '552',
-    },
-  ],
-});
 
 export const fetchAuctionTransactions = data => async dispatch => {
-  dispatch(fetchedAuctionTransactions());
+  const engineContract = await eth.getEngineContract();
+  const necPrice = await eth.getNecPrice();
+  const nec_eth = await eth.getNecPriceInEth();
+  const blockRange = await eth.getChartBlockRange();
+  const transactions = await engineContract.getPastEvents('Burn', blockRange);
+
+  const transactionsList = await Promise.all(transactions.slice(0,20).map(async transaction => {
+    const { timestamp } = await eth.getBlockByNumber(transaction.blockNumber);
+
+    const price_nec_usd = await eth.getNecUsdByTimestamp(timestamp * 1000);
+
+    return {
+      timestamp,
+      blockNumber: transaction.blockNumber,
+      wallet_address: transaction.returnValues.burner,
+      nec: formatEth(transaction.returnValues.amount),
+      eth: (transaction.returnValues.amount / transaction.returnValues.price).toFixed(5),
+      price_nec_eth: nec_eth,
+      price_nec_usd,
+      usd: (formatEth(transaction.returnValues.amount) * necPrice).toFixed(2),
+    }
+  }));
+
+  dispatch({ type: FETCH_AUCTION_TRANSACTIONS, auctionTransactions: _.orderBy(transactionsList, ['timestamp'], ['desc']) });
 };
+
+export const fetchNecPrice = () => async dispatch => {
+  const necPrice = await eth.getNecPrice();
+
+  dispatch({ type: FETCH_NEC_PRICE, necPrice })
+}
+
+export const fetchEthPrice = () => async dispatch => {
+  const ethPrice = await eth.getEthPrice();
+
+  dispatch({ type: FETCH_ETH_PRICE, ethPrice })
+}
+
+export const sellAndBurn = (necAmount, auctionSummary) => async (dispatch, getState) => {
+  if (!getState().account.accountType) return dispatch(openLogin())
+
+  const userTokenBalance = getState().account.tokenBalance
+
+  if (necAmount < 1) {
+    return notifyError('This is below the minimum you can sell')(dispatch)
+  }
+
+  if (!userTokenBalance || userTokenBalance < 0.1) {
+    return notifyError('You first need nectar tokens in your wallet')(dispatch)
+  }
+
+  if (userTokenBalance < necAmount) {
+    return notifyError(`You only have: ${userTokenBalance} NEC in your wallet`)(dispatch)
+  }
+
+  const maxNec = formatEth(new BN(auctionSummary.remainingEth).div(auctionSummary.currentNecPrice))
+
+  if (necAmount > +maxNec) {
+    notify(`Your order will be reduced to sell ${maxNec} NEC (the max at this price)`)(dispatch)
+    necAmount = maxNec 
+  }
+
+  try {
+    await eth.sellAndBurn(necAmount, getState().account.accountType)
+    notify('You have sold NEC!', 'success')(dispatch)
+    dispatch({ type: SELL_AND_BURN_NEC })
+  } catch(err) {
+    notifyError(err)(dispatch)
+  }
+}
